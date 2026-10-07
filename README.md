@@ -53,3 +53,35 @@ complete (SC-500 Modules 1–3). Next: storage/compute hardening
 
 ## Threat Model
 [To be added — see /threat-model]
+
+## Lessons Learned / Troubleshooting
+
+### Bicep deployment scope errors
+When running `az bicep build` to validate the template locally (before
+any real Azure deployment), encountered BCP034/BCP134/BCP135 errors
+related to deployment scope mismatches between `main.bicep` and its
+modules.
+
+**Root cause:** `main.bicep` is deployed at the subscription scope
+(`targetScope = 'subscription'`) so it can create the resource group
+itself. However:
+- Modules containing resource-group-level resources (the VNets in
+  `network.bicep`, the vault in `keyvault.bicep`) need an explicit
+  `scope: rg` property — without it, Bicep doesn't know which resource
+  group to deploy into.
+- `identity.bicep` needed its own explicit `targetScope = 'subscription'`
+  declaration, since its custom RBAC role definition is a
+  subscription-level resource (`assignableScopes: [subscription().id]`)
+  and must not be scoped to a resource group.
+
+**Fix:** moved resource group creation into `main.bicep`, added
+`scope: rg` to the `network` and `keyvault` module calls, and added
+`targetScope = 'subscription'` to `identity.bicep` to match the
+subscription-level resource it declares.
+
+**Takeaway:** Azure resources and Bicep modules must be deployed at
+the correct scope (subscription vs. resource group), and this has to
+be explicit and consistent across a file and everything it references.
+`az bicep build` catches these mismatches for free, locally, before
+any real deployment or cost is involved — this was validated entirely
+without an active Azure subscription.

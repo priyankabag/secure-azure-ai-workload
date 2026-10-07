@@ -1,10 +1,7 @@
+targetScope = 'subscription'
+
 param location string = 'eastus'
 param environment string = 'prod'
-
-resource rg 'Microsoft.Resources/resourceGroups@2021-04-01' = {
-  name: 'rg-secure-ai-workload-${environment}'
-  location: location
-}
 
 // Custom role: least-privilege access for AI workload operators
 // Scoped to only read/write on AI-related resources, not full Contributor
